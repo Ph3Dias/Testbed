@@ -5,6 +5,7 @@ import queue
 import logger
 from comunicador.consumidorServer import MQTTEventConsumer
 from comunicador.produtorServer import MQTTServerPublisher
+from src.InferenceBenckmark.main import start_benchmarking
 
 # Configurações do Broker e do Nó
 BROKER_HOST = "localhost"  # Altere para o IP do seu broker MQTT
@@ -12,26 +13,33 @@ BROKER_PORT = 1883
 NODE_ID = "node_01"
 
 # Tópicos (seguindo o padrão definido no produtorServer.py)
-TOPIC_COMANDOS = f"testbed/nodes/{NODE_ID}/commands"
+TOPIC_COMMANDS = f"testbed/nodes/{NODE_ID}/commands"
 TOPIC_CONFIRMACAO = f"testbed/nodes/{NODE_ID}/ack"
 
 # Pastas de Modelo e Dataset
-DATASET_PATH = "/home/edgeai/Desktop/testbed/Testbed/dataset/"
-MODELS_PATH = "/home/edgeai/Desktop/testbed/Testbed/models/"
+DATASET_PATH = "/home/pi/Testbed/data/dataset/" #verificar o nome do dataset
+MODELS_PATH = "/home/pi/Testbed/data/models/"
+OUTPUT_PATH = "/home/pi/Testbed/data/output/"
 
 # ==========================================
 # Funções executadas sob demanda via MQTT
 # ==========================================
 
-def start_benchmark(model_architecture, model_format, model_quant, language) -> bool:
+def start_benchmark(parameters: json) -> bool:
 
+    half_cores = parameters["half_cores"]
+    language = parameters["language"]
+    test_id = parameters["test_id"]
+    architecture = parameters["architecture"]
+    quant = parameters["quant"]
+    format = parameters["format"]
+
+    model_path = MODELS_PATH
+    model_path += f"/{format}/{architecture}_{quant}.{format}"
     try:
-        cmd_benchmark = f"python3 src/InferenceBenckmark/main.py "
-        cmd_benchmark += f"--images_folder ${DATASET_PATH} "
-        cmd_benchmark += f"--model_path ${MODELS_PATH}/{model_format}/${model_architecture}_{model_quant}.{model_format} " 
-        cmd_benchmark += f"--language {language}"
-        
-        os.system(cmd_benchmark)
+
+        start_benchmarking(DATASET_PATH,model_path,OUTPUT_PATH, half_cores, language, test_id)
+
         return True
     
     except:
@@ -94,7 +102,7 @@ def send_ack(publisher: MQTTServerPublisher, command: str, status: str, details=
 
 
 # Mapa de roteamento: liga o nome do comando à função Python
-ROTAS_COMANDOS = {
+COMMANDS_ROUTES = {
     "start_benchmark": start_benchmark,
     "delete_dataset": delete_test_dataset_folder,
     "delete_model": delete_test_model_folder
@@ -119,11 +127,11 @@ def main():
 
     try:
         # Conecta e assina o tópico de comandos
-        consumer.subscribe_topic(TOPIC_COMANDOS)
+        consumer.subscribe_topic(TOPIC_COMMANDS)
         consumer.connect()
         publisher.connect()
 
-        logger.info(f"Nó [{NODE_ID}] pronto. Aguardando comandos em '{TOPIC_COMANDOS}'...")
+        logger.info(f"Nó [{NODE_ID}] pronto. Aguardando comandos em '{TOPIC_COMMANDS}'...")
 
         while True:
             try:
@@ -139,28 +147,32 @@ def main():
 
             # Interpreta o payload (aceita JSON ou texto simples)
             try:
-                dados = json.loads(payload_str)
-                nome_comando = dados.get("comando")
-                parametros = dados.get("parametros", {})
+                
+                data = json.loads(payload_str)
+                command_name = data.get("command")
+                parameters = data.get("parameters", {})
+
             except json.JSONDecodeError:
-                nome_comando = payload_str
-                parametros = {}
+                command_name = payload_str
+                parameters = {}
+
+            send_ack(publisher,command_name, "recived")
 
             # Redireciona para a função correspondente
-            funcao = ROTAS_COMANDOS.get(nome_comando)
+            function = COMMANDS_ROUTES.get(command_name)
 
-            if not funcao:
-                logger.warning(f"Comando desconhecido: '{nome_comando}'")
-                enviar_confirmacao(publisher, nome_comando, "erro", "Comando não reconhecido")
+            if not function:
+                logger.warning(f"Comando desconhecido: '{command_name}'")
+                send_ack(publisher, command_name, "error", "Invalid Command")
                 continue
 
             # Executa a função e envia a confirmação ao terminar
             try:
-                resultado = funcao(parametros)
-                enviar_confirmacao(publisher, nome_comando, "concluido", resultado)
+                result = function(parameters)
+                send_ack(publisher, command_name, "Finished", result)
             except Exception as e:
-                logger.error(f"Erro ao executar '{nome_comando}': {e}")
-                enviar_confirmacao(publisher, nome_comando, "erro", str(e))
+                logger.error(f"Erro ao executar '{command_name}': {e}")
+                send_ack(publisher, command_name, "error", str(e))
 
     except KeyboardInterrupt:
         logger.info("Encerrando aplicação via teclado (Ctrl+C)...")
@@ -171,4 +183,5 @@ def main():
 
 
 if __name__ == "__main__":
-    print(delete_test_dataset_folder("b.txt"))
+    cmd = f"cd data/dataset/"
+    os.system(cmd)
