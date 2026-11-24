@@ -12,8 +12,7 @@ def start_benchmarking(
         model_path: str,
         output_path: str,
         half_cores: bool,
-        language: str,
-        test_id: str
+        language: str
         ):
     
     '''
@@ -25,9 +24,6 @@ def start_benchmarking(
     current_datetime = datetime.now()
     current_datetime = current_datetime.strftime("%Y%m%dT%H%M%S")
 
-    output_path += test_id
-    images_folder += test_id
-    # model_path += test_id; retomar lógica quando o download de modelo estiver pronto
 
     os.makedirs(output_path, exist_ok=True)
     
