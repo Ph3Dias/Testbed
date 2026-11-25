@@ -2,10 +2,10 @@ import argparse
 import os
 from time import sleep
 from datetime import datetime
-from .report.table import generate_table, export_table
+from report.table import generate_table, export_table
 
-from .monitor.performancemetrics import PerformanceMetrics
-from .monitor.consumptionmetrics import ConsumptionMetrics
+from monitor.performancemetrics import PerformanceMetrics
+from monitor.consumptionmetrics import ConsumptionMetrics
 
 def start_benchmarking(
         images_folder: str,

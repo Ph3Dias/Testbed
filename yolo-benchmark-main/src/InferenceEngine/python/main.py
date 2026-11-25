@@ -4,9 +4,9 @@ import cv2
 import argparse
 from tqdm import tqdm 
 
-from .ai.processors.detector import Detector
-from .image.plotter import ImagePlotter
-from .interface.mqttproducer import MQTTProducer
+from ai.processors.detector import Detector
+from image.plotter import ImagePlotter
+from interface.mqttproducer import MQTTProducer
 
 def start_inferencing(images_folder: str, model_path: str, half_cores: bool, output_folder: str):
     '''

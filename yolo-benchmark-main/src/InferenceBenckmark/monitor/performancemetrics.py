@@ -1,4 +1,4 @@
-from .interface.mqttconsumer import MQTTConsumer
+from interface.mqttconsumer import MQTTConsumer
 import json
 
 class PerformanceMetrics:
