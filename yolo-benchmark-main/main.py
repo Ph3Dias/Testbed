@@ -5,7 +5,7 @@ import queue
 import logging  as logger# Ajustado para o módulo padrão (caso não tenha um arquivo logger.py próprio)
 from comunicador.consumidorServer import MQTTEventConsumer
 from comunicador.produtorServer import MQTTServerPublisher
-from src.InferenceBenckmark.main import start_benchmarking
+
 
 # Configuração básica de logs
 logger.basicConfig(
@@ -46,14 +46,13 @@ def start_benchmark(parameters: dict) -> bool:
     data_path = DATASET_PATH + dataset_name
     output_path = OUTPUT_PATH + test_id
 
+    cmd = f"python3 src/InferenceBenckmark/main.py "
+    cmd += f"--images_folder ${data_path} "
+    cmd+= f"--model_path ${model_path} "
+    cmd += f"--language python"
+
     try:
-        start_benchmarking(
-            data_path,
-            model_path,
-            output_path,
-            half_cores,
-            language
-        )
+        os.system(cmd)
         return True
     except Exception as e:
         logger.error(f"Não foi possível iniciar o benchmark: {e}")

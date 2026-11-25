@@ -126,6 +126,7 @@ if __name__ == "__main__":
         help="Python or C++ inferencer."
     )
 
+
     args = parser.parse_args()
 
     start_benchmarking(
